@@ -1,6 +1,22 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: task-manager-redis
+    ports:
+      - "6379:6379"
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   task-manager:
     build: .
     container_name: task-manager-app
@@ -10,9 +26,13 @@ services:
       - DEBUG=true
       - SECRET_KEY=your-super-secret-key-change-in-production
       - DATABASE_URL=sqlite:///./app.db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     volumes:
       - ./data:/app/data
       - ./app.db:/app/app.db
+    depends_on:
+      - redis
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/api/health"]
@@ -21,5 +41,48 @@ services:
       retries: 3
       start_period: 40s
 
+  celery-worker:
+    build: .
+    container_name: task-manager-worker
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - DEBUG=true
+      - SECRET_KEY=your-super-secret-key-change-in-production
+      - DATABASE_URL=sqlite:///./app.db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./data:/app/data
+      - ./app.db:/app/app.db
+    depends_on:
+      - redis
+      - task-manager
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "celery", "-A", "app.celery_app", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  celery-beat:
+    build: .
+    container_name: task-manager-scheduler
+    command: celery -A app.celery_app beat --loglevel=info
+    environment:
+      - DEBUG=true
+      - SECRET_KEY=your-super-secret-key-change-in-production
+      - DATABASE_URL=sqlite:///./app.db
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./data:/app/data
+      - ./app.db:/app/app.db
+    depends_on:
+      - redis
+      - task-manager
+    restart: unless-stopped
+
 volumes:
-  data: 
+  data:
+  redis_data: 

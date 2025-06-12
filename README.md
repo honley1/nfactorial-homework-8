@@ -32,6 +32,7 @@ A modern, full-featured task management application built with FastAPI, SQLite, 
 - **Authentication**: JWT (JSON Web Tokens)
 - **Frontend**: Server-Side Rendering with Jinja2 templates
 - **Styling**: Bootstrap 5 with custom CSS
+- **Async Tasks**: Celery with Redis broker
 - **Containerization**: Docker & Docker Compose
 - **CI/CD**: GitHub Actions
 - **Testing**: Pytest
@@ -49,6 +50,27 @@ A modern, full-featured task management application built with FastAPI, SQLite, 
 - `GET /api/tasks/{task_id}` - Get specific task (Protected)
 - `PUT /api/tasks/{task_id}` - Update task (Protected)
 - `DELETE /api/tasks/{task_id}` - Delete task (Protected)
+
+### Advanced Tasks
+- `GET /api/advanced-tasks/search` - Advanced search with filters
+- `GET /api/advanced-tasks/statistics` - Task statistics
+- `PUT /api/advanced-tasks/bulk-update` - Bulk update tasks
+- `DELETE /api/advanced-tasks/bulk-delete` - Bulk delete tasks
+- `GET /api/advanced-tasks/date-range` - Get tasks by date range
+- `POST /api/advanced-tasks/duplicate/{task_id}` - Duplicate task
+- `GET /api/advanced-tasks/activity-summary` - User activity summary
+- `GET /api/advanced-tasks/export` - Export tasks (JSON/CSV)
+- `GET /api/advanced-tasks/analytics` - Task analytics
+
+### Celery Tasks
+- `POST /api/celery/send-notification` - Send async email notification
+- `POST /api/celery/bulk-create-tasks` - Bulk create tasks async
+- `POST /api/celery/generate-report` - Generate user report async
+- `POST /api/celery/cleanup-old-tasks` - Cleanup old tasks
+- `GET /api/celery/task-status/{task_id}` - Get task status
+- `GET /api/celery/active-tasks` - Get active tasks
+- `DELETE /api/celery/cancel-task/{task_id}` - Cancel task
+- `GET /api/celery/worker-stats` - Worker statistics
 
 ### Frontend Routes
 - `GET /` - Homepage
@@ -99,15 +121,102 @@ A modern, full-featured task management application built with FastAPI, SQLite, 
    - API Documentation: http://localhost:4000/docs
    - Alternative API Docs: http://localhost:4000/redoc
 
-### Docker Development
+### Docker Development (with Celery)
 
 1. **Build and run with Docker Compose**
    ```bash
    docker-compose up --build
    ```
 
-2. **Access the application**
+2. **Services running:**
+   - **Web Application**: http://localhost:4000
+   - **Redis**: localhost:6379
+   - **Celery Worker**: Background task processing
+   - **Celery Beat**: Scheduled task scheduler
+
+3. **Access the application**
    - Web Interface: http://localhost:4000
+
+### Local Development with Celery
+
+1. **Start Redis** (required for Celery)
+   ```bash
+   # Using Docker
+   docker run -d -p 6379:6379 redis:7-alpine
+   
+   # Or install Redis locally
+   # macOS: brew install redis && brew services start redis
+   # Ubuntu: sudo apt install redis-server && sudo systemctl start redis
+   ```
+
+2. **Start FastAPI application**
+   ```bash
+   uvicorn app.main:app --reload --port 4000
+   ```
+
+3. **Start Celery Worker** (in new terminal)
+   ```bash
+   chmod +x start_celery.sh
+   ./start_celery.sh
+   
+   # Or directly:
+   celery -A app.celery_app worker --loglevel=info
+   ```
+
+4. **Start Celery Beat** (optional, for scheduled tasks)
+   ```bash
+   chmod +x start_beat.sh
+   ./start_beat.sh
+   
+   # Or directly:
+   celery -A app.celery_app beat --loglevel=info
+   ```
+
+## 🔴 Redis Configuration & Monitoring
+
+### Redis Setup
+Redis is pre-configured in the Docker Compose setup. Configuration file: `redis.conf`
+
+### Redis Commands
+```bash
+# Connect to Redis (Docker)
+docker exec -it task-manager-redis redis-cli
+
+# Connect to Redis (local)
+redis-cli -h localhost -p 6379
+
+# Basic Redis operations
+INFO                     # Server information
+KEYS *                   # All keys (use carefully!)
+FLUSHALL                 # Clear all data
+```
+
+### Celery Queue Monitoring
+```bash
+# Check queue lengths
+LLEN celery              # Main Celery queue
+LLEN email               # Email queue
+LLEN reports             # Reports queue
+LLEN cleanup             # Cleanup queue
+
+# View queue contents
+LRANGE celery 0 -1       # All items in celery queue
+
+# View Celery task results
+KEYS celery-task-meta-*  # All task metadata
+```
+
+### Redis Monitor Tool
+```bash
+# Run the custom Redis monitor
+python redis_monitor.py
+
+# Or use built-in Redis monitor
+redis-cli MONITOR
+
+# Performance monitoring
+redis-cli --latency
+```
 
 ### Production Deployment
 
