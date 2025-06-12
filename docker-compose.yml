@@ -109,5 +109,4 @@ volumes:
   redis_data:
   app_logs:
   worker_logs:
-  beat_logs:
-  nginx_logs: 
+  beat_logs: 
