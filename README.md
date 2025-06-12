@@ -220,15 +220,79 @@ redis-cli --latency
 
 ### Production Deployment
 
-1. **Build Docker image**
+#### 🚀 Автоматический деплой на сервер
+
+1. **Первоначальная настройка сервера**
    ```bash
-   docker build -t task-manager .
+   # На новом сервере Ubuntu
+   sudo ./server-setup.sh
    ```
 
-2. **Run container**
+2. **Подготовка проекта**
    ```bash
-   docker run -p 4000:4000 -e SECRET_KEY=your-production-secret task-manager
+   # Копируйте env.production.example в .env
+   cp env.production.example .env
+   
+   # Отредактируйте .env файл
+   nano .env
    ```
+
+3. **Деплой приложения**
+   ```bash
+   # Полный деплой
+   sudo ./deploy.sh deploy
+   
+   # Или поэтапно:
+   sudo ./deploy.sh install  # Только установка зависимостей
+   sudo ./deploy.sh deploy   # Развертывание
+   ```
+
+#### 🔧 Ручной деплой
+
+1. **Подготовка сервера**
+   ```bash
+   # Обновление системы
+   sudo apt update && sudo apt upgrade -y
+   
+   # Установка Docker
+   curl -fsSL https://get.docker.com -o get-docker.sh
+   sudo sh get-docker.sh
+   
+   # Установка Docker Compose
+   sudo apt install docker-compose-plugin
+   ```
+
+2. **Клонирование проекта**
+   ```bash
+   git clone <your-repo-url> /opt/task-manager
+   cd /opt/task-manager
+   ```
+
+3. **Настройка переменных окружения**
+   ```bash
+   cp env.production.example .env
+   # Отредактируйте .env файл со своими настройками
+   ```
+
+4. **Деплой с Docker Compose**
+   ```bash
+   # Production сборка
+   docker-compose -f docker-compose.prod.yml up -d --build
+   ```
+
+#### 🔒 SSL сертификаты (Let's Encrypt)
+
+```bash
+# Установка Certbot
+sudo apt install certbot python3-certbot-nginx
+
+# Получение сертификата
+sudo certbot --nginx -d yourdomain.com
+
+# Автоматическое обновление
+sudo crontab -e
+# Добавьте: 0 12 * * * /usr/bin/certbot renew --quiet
+```
 
 ## 🧪 Testing
 
